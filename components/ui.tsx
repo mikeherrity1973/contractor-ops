@@ -1,10 +1,11 @@
 'use client';
 import React from 'react';
-import Link from 'next/link';
+import Link, { type LinkProps } from 'next/link';
 import clsx from 'clsx';
 
 /** Button
  * - Supports href (renders <Link>) or onClick (renders <button>)
+ * - If href includes a hash (#), render a plain <a> (hash links aren't typed routes)
  * - Variants: primary (brand), outline, ghost, success, danger, warning
  * - Sizes: sm, md, lg
  */
@@ -18,7 +19,7 @@ export const Button = ({
   type = 'button',
   disabled,
 }: React.PropsWithChildren<{
-  href?: string;
+  href?: LinkProps['href'] | string;
   onClick?: () => void;
   variant?: 'primary' | 'outline' | 'danger' | 'ghost' | 'success' | 'warning';
   size?: 'sm' | 'md' | 'lg';
@@ -45,14 +46,25 @@ export const Button = ({
     'pointer-events-none opacity-50': disabled && !!href,
   });
 
+  // If href has a hash (#), use a plain anchor (typedRoutes doesn't like hashes)
+  if (typeof href === 'string' && href.includes('#')) {
+    return (
+      <a href={href} className={cls} aria-disabled={disabled}>
+        {children}
+      </a>
+    );
+  }
+
+  // If href provided (typed route or UrlObject), render <Link>
   if (href) {
     return (
-      <Link href={href} className={cls} aria-disabled={disabled}>
+      <Link href={href as LinkProps['href']} className={cls} aria-disabled={disabled}>
         {children}
       </Link>
     );
   }
 
+  // Otherwise render a normal button
   return (
     <button type={type} disabled={disabled} onClick={onClick} className={cls}>
       {children}
@@ -60,9 +72,7 @@ export const Button = ({
   );
 };
 
-/** Card
- * - Optional title, subtitle, and actions across the top border
- */
+/** Card */
 export const Card = ({
   title,
   subtitle,
@@ -89,9 +99,7 @@ export const Card = ({
   </div>
 );
 
-/** Input
- * - Tailwind focus ring uses brand-200
- */
+/** Input */
 export const Input = ({
   value,
   onChange,
@@ -117,9 +125,7 @@ export const Input = ({
   />
 );
 
-/** Select
- * - Tailwind focus ring uses brand-200
- */
+/** Select */
 export const Select = ({
   value,
   onChange,
@@ -142,9 +148,7 @@ export const Select = ({
   </select>
 );
 
-/** Badge
- * - Supports both "brand" and legacy "blue" to avoid breaking older code
- */
+/** Badge */
 export const Badge = ({
   children,
   tone = 'gray',
@@ -154,7 +158,7 @@ export const Badge = ({
   const tones: Record<string, string> = {
     gray: 'bg-gray-100 text-gray-700',
     brand: 'bg-brand-100 text-brand-700',
-    blue: 'bg-brand-100 text-brand-700', // legacy alias
+    blue: 'bg-brand-100 text-brand-700', // alias for old code
     green: 'bg-emerald-100 text-emerald-700',
     amber: 'bg-amber-100 text-amber-800',
     red: 'bg-rose-100 text-rose-700',
