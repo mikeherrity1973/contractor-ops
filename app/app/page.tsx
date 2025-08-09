@@ -11,7 +11,9 @@ type Job = any;
 
 const seedCategories = ['Gas','Plumbing','Electrics','Handyman','Carpentry','Roofing','Decorating','Flooring','Other'];
 
-function statusTone(s: string) { return ({ Unassigned: 'amber', Assigned: 'blue', Started: 'violet', Completed: 'green' } as any)[s] || 'gray'; }
+function statusTone(s: string) {
+  return ({ Unassigned: 'amber', Assigned: 'blue', Started: 'violet', Completed: 'green' } as any)[s] || 'gray';
+}
 
 export default function AppPage() {
   const [mode] = useState(ENV.AUTH_MODE);
@@ -139,24 +141,43 @@ export default function AppPage() {
     function contractRateCheck(base: number, contract: number, code: string, description: string) {
       if (code === 'NONSOR' && description === 'CARPET:RENEW TO DOMESTIC AREAS') {
         return { valid: Math.abs(contract - 32.10) < 0.01, fixedRate: 32.10 };
-      }
+        }
       const expected = base * 1.15;
       return { valid: Math.abs(contract - expected) < 0.01, expected };
     }
 
     const toInsert: any[] = [];
     rows.forEach((r, idx) => {
-      const code = String(r.CODE || '').trim();
-      const description = String(r.DESCRIPTION || '').trim();
-      if (!code && !description) return; // skip invalid
-      const base = Number(r['BASE RATE'] || 0);
-      const contract = Number(r['CONTRACT RATE UNIT'] || 0);
-      const qty = Number(r.QTY || 0);
-      const total = Number(r.TOTAL || (contract * qty));
+      // accept multiple header spellings/cases
+      const code = String((r as any).CODE ?? '').trim();
+      const description = String((r as any).DESCRIPTION ?? '').trim();
+
+      if (!code && !description) return; // skip empty
+
+      const base = Number((r as any)['BASE RATE'] ?? 0);
+
+      // NEW: accept CONTRACT RATE or CONTRACT RATE UNIT
+      const contract = Number(
+        (r as any)['CONTRACT RATE UNIT'] ??
+        (r as any)['CONTRACT RATE'] ??
+        0
+      );
+
+      // NEW: accept Unit or UNIT
+      const unit = String(
+        (r as any).Unit ??
+        (r as any).UNIT ??
+        ''
+      );
+
+      const qty = Number((r as any).QTY ?? 0);
+      const total = Number((r as any).TOTAL ?? (contract * qty));
+
       const { category, needsReview } = classify(r);
       const check = contractRateCheck(base, contract, code, description);
-      const location = String(r.LOCATION || '').trim();
-      const comments = String(r.COMMENTS || '').trim();
+
+      const location = String((r as any).LOCATION ?? '').trim();
+      const comments = String((r as any).COMMENTS ?? '').trim();
 
       const region = property?.region || activeJob?.region || '';
       const defaultKey = `${category}|${region}`;
@@ -167,7 +188,7 @@ export default function AppPage() {
         description,
         base_rate_pence: toPence(base),
         contract_rate_pence: toPence(check.fixedRate ?? contract),
-        unit: String(r.Unit || ''),
+        unit,
         qty,
         total_pence: toPence(check.fixedRate ? (check.fixedRate * qty) : total),
         location,
@@ -188,9 +209,8 @@ export default function AppPage() {
 
     // Map category/assignee names to IDs
     const catByName = new Map(categories.map((c: any) => [c.name, c.id]));
-    // Fetch contractors list
     const { data: contractors } = await supabase.from('contractors').select('*');
-    const contractorByName = new Map((contractors||[]).map((c: any) => [c.company_name, c.id]));
+    const contractorByName = new Map((contractors || []).map((c: any) => [c.company_name, c.id]));
 
     const dbRows = toInsert.map(x => ({
       job_id: jobId,
@@ -213,12 +233,14 @@ export default function AppPage() {
     const { error } = await supabase.from('line_items').insert(dbRows);
     if (error) return alert(error.message);
     alert('Upload complete');
+
     // reload
     const { data } = await supabase
       .from('line_items')
       .select('*, contractors:assignee_contractor_id(company_name), categories:category_id(name)')
       .eq('job_id', jobId)
       .order('row_index', { ascending: true });
+
     if (data) setItems(data.map((r: any) => ({
       id: r.id,
       code: r.code,
@@ -244,14 +266,13 @@ export default function AppPage() {
     const dbPatch: any = {};
     if (patch.status) dbPatch.status = patch.status;
     if (patch.category) {
-      // map category name to id
       const { data: cats } = await supabase.from('categories').select('*');
-      const cat = (cats||[]).find(c => c.name === patch.category);
+      const cat = (cats || []).find(c => c.name === patch.category);
       if (cat) dbPatch.category_id = cat.id;
     }
     if (patch.assignee_name !== undefined) {
       const { data: cons } = await supabase.from('contractors').select('*');
-      const c = (cons||[]).find(x => x.company_name === patch.assignee_name);
+      const c = (cons || []).find(x => x.company_name === patch.assignee_name);
       dbPatch.assignee_contractor_id = c?.id || null;
       if (patch.assignee_name && patch.status === 'Unassigned') dbPatch.status = 'Assigned';
     }
@@ -275,6 +296,7 @@ export default function AppPage() {
       CODE: r.code,
       DESCRIPTION: r.description,
       'BASE RATE': fromPence(r.base_rate_pence),
+      // keep our canonical header name on export
       'CONTRACT RATE UNIT': fromPence(r.contract_rate_pence),
       Unit: r.unit,
       QTY: r.qty,
