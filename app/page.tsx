@@ -16,11 +16,11 @@ export default function Home() {
   useEffect(() => {
     if (mode !== 'demo_pin') {
       supabase.auth.getSession().then(({ data }) => {
-        if (data.session) router.replace('/app');
+        if (data.session) router.replace('/app/home');   // <-- changed
       });
     } else {
       const ok = typeof window !== 'undefined' && localStorage.getItem('demo_ok') === 'yes';
-      if (ok) router.replace('/app');
+      if (ok) router.replace('/app/home');               // <-- changed
     }
   }, [router, mode]);
 
@@ -28,19 +28,28 @@ export default function Home() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) alert(error.message); else router.replace('/app');
+    if (error) alert(error.message);
+    else router.replace('/app/home');                    // <-- changed
   }
 
   async function loginMagic() {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${ENV.APP_URL}/app` } });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${ENV.APP_URL}/app/home` },  // <-- changed
+    });
     setLoading(false);
-    if (error) alert(error.message); else alert('Check your email for the sign-in link.');
+    if (error) alert(error.message);
+    else alert('Check your email for the sign-in link.');
   }
 
   function loginDemo() {
-    if (pin === ENV.DEMO_PIN) { localStorage.setItem('demo_ok', 'yes'); router.replace('/app'); }
-    else alert('Wrong PIN');
+    if (pin === ENV.DEMO_PIN) {
+      localStorage.setItem('demo_ok', 'yes');
+      router.replace('/app/home');                       // <-- changed
+    } else {
+      alert('Wrong PIN');
+    }
   }
 
   return (
@@ -55,6 +64,7 @@ export default function Home() {
             </div>
           </form>
         )}
+
         {mode === 'magic_link' && (
           <div className="space-y-3">
             <Input value={email} onChange={setEmail} placeholder="Email for magic link" />
@@ -63,6 +73,7 @@ export default function Home() {
             </div>
           </div>
         )}
+
         {mode === 'demo_pin' && (
           <div className="space-y-3">
             <Input value={pin} onChange={setPin} placeholder="Enter demo PIN" />
