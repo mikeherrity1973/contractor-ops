@@ -14,7 +14,7 @@ export const Button = ({
   const base = 'inline-flex items-center justify-center rounded-2xl font-medium transition px-4 py-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
   const sizes = { sm: 'text-sm px-3 py-1.5', md: 'text-sm px-4 py-2', lg: 'text-base px-5 py-3' };
   const variants: Record<string,string> = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700',
+    primary: 'bg-brand-600 text-white hover:bg-brand-700',
     outline: 'border border-gray-300 text-gray-800 bg-white hover:bg-gray-50',
     ghost: 'text-gray-700 hover:bg-gray-100',
     success: 'bg-emerald-600 text-white hover:bg-emerald-700',
@@ -45,18 +45,18 @@ export const Card = ({ title, subtitle, actions, children, className }: React.Pr
 
 export const Input = ({ value, onChange, placeholder, type = 'text', className }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string; className?: string }) => (
   <input value={value} onChange={e => onChange(e.target.value)} type={type} placeholder={placeholder}
-    className={clsx('w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200', className)} />
+    className={clsx('w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200', className)} />
 );
 
 export const Select = ({ value, onChange, children, className }: React.PropsWithChildren<{ value: string; onChange: (v: string) => void; className?: string }>) => (
   <select value={value} onChange={e => onChange(e.target.value)}
-    className={clsx('w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200', className)}>{children}</select>
+    className={clsx('w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200', className)}>{children}</select>
 );
 
-export const Badge = ({ children, tone = 'gray' }: React.PropsWithChildren<{ tone?: 'gray'|'blue'|'green'|'amber'|'red'|'violet' }>) => {
+export const Badge = ({ children, tone = 'gray' }: React.PropsWithChildren<{ tone?: 'gray'|'brand'|'green'|'amber'|'red'|'violet' }>) => {
   const tones: Record<string,string> = {
     gray: 'bg-gray-100 text-gray-700',
-    blue: 'bg-blue-100 text-blue-700',
+    brand: 'bg-brand-100 text-brand-700',
     green: 'bg-emerald-100 text-emerald-700',
     amber: 'bg-amber-100 text-amber-800',
     red: 'bg-rose-100 text-rose-700',
