@@ -1,11 +1,11 @@
 'use client';
 import React from 'react';
-import Link, { type LinkProps } from 'next/link';
+import Link from 'next/link';
 import clsx from 'clsx';
 
 /** Button
  * - Supports href (renders <Link>) or onClick (renders <button>)
- * - If href includes a hash (#), render a plain <a> (hash links aren't typed routes)
+ * - If href contains a hash (#), use a plain <a> (best for in-page/hash links)
  * - Variants: primary (brand), outline, ghost, success, danger, warning
  * - Sizes: sm, md, lg
  */
@@ -19,7 +19,7 @@ export const Button = ({
   type = 'button',
   disabled,
 }: React.PropsWithChildren<{
-  href?: LinkProps['href'] | string;
+  href?: string | { pathname: string; query?: Record<string, any> }; // simple, avoids typedRoutes generics
   onClick?: () => void;
   variant?: 'primary' | 'outline' | 'danger' | 'ghost' | 'success' | 'warning';
   size?: 'sm' | 'md' | 'lg';
@@ -46,7 +46,7 @@ export const Button = ({
     'pointer-events-none opacity-50': disabled && !!href,
   });
 
-  // If href has a hash (#), use a plain anchor (typedRoutes doesn't like hashes)
+  // Hash links: use plain <a>
   if (typeof href === 'string' && href.includes('#')) {
     return (
       <a href={href} className={cls} aria-disabled={disabled}>
@@ -55,16 +55,16 @@ export const Button = ({
     );
   }
 
-  // If href provided (typed route or UrlObject), render <Link>
+  // Next Link for everything else
   if (href) {
     return (
-      <Link href={href as LinkProps['href']} className={cls} aria-disabled={disabled}>
+      <Link href={href as any} className={cls} aria-disabled={disabled}>
         {children}
       </Link>
     );
   }
 
-  // Otherwise render a normal button
+  // Plain button
   return (
     <button type={type} disabled={disabled} onClick={onClick} className={cls}>
       {children}
