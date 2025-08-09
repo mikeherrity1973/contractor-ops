@@ -84,6 +84,22 @@ export default function AppPage() {
     })();
   }, [activeJob?.id, mode]);
 
+  // ---------- NEW: deep-link reader (#jobs/#upload/#items and ?job=<id>) ----------
+  const [route, setRoute] = useState<'wireflow'|'upload'|'jobs'|'items'>('items');
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash.replace('#','');
+    if (hash === 'jobs' || hash === 'upload' || hash === 'items') setRoute(hash as any);
+    const sp = new URLSearchParams(window.location.search);
+    const job = sp.get('job');
+    if (job) setActiveJobId(job);
+  }, []);
+  // -------------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (activeJobId && route === 'jobs') setRoute('items');
+  }, [activeJobId, route]);
+
   async function handleUpload(file: File, property: any) {
     if (mode !== 'demo_pin' && !userEmail) return alert('Please log in again.');
     const rows = await parseXlsx(file);
@@ -141,43 +157,24 @@ export default function AppPage() {
     function contractRateCheck(base: number, contract: number, code: string, description: string) {
       if (code === 'NONSOR' && description === 'CARPET:RENEW TO DOMESTIC AREAS') {
         return { valid: Math.abs(contract - 32.10) < 0.01, fixedRate: 32.10 };
-        }
+      }
       const expected = base * 1.15;
       return { valid: Math.abs(contract - expected) < 0.01, expected };
     }
 
     const toInsert: any[] = [];
     rows.forEach((r, idx) => {
-      // accept multiple header spellings/cases
-      const code = String((r as any).CODE ?? '').trim();
-      const description = String((r as any).DESCRIPTION ?? '').trim();
-
-      if (!code && !description) return; // skip empty
-
-      const base = Number((r as any)['BASE RATE'] ?? 0);
-
-      // NEW: accept CONTRACT RATE or CONTRACT RATE UNIT
-      const contract = Number(
-        (r as any)['CONTRACT RATE UNIT'] ??
-        (r as any)['CONTRACT RATE'] ??
-        0
-      );
-
-      // NEW: accept Unit or UNIT
-      const unit = String(
-        (r as any).Unit ??
-        (r as any).UNIT ??
-        ''
-      );
-
-      const qty = Number((r as any).QTY ?? 0);
-      const total = Number((r as any).TOTAL ?? (contract * qty));
-
+      const code = String(r.CODE || '').trim();
+      const description = String(r.DESCRIPTION || '').trim();
+      if (!code && !description) return; // skip invalid
+      const base = Number(r['BASE RATE'] || 0);
+      const contract = Number(r['CONTRACT RATE UNIT'] || 0);
+      const qty = Number(r.QTY || 0);
+      const total = Number(r.TOTAL || (contract * qty));
       const { category, needsReview } = classify(r);
       const check = contractRateCheck(base, contract, code, description);
-
-      const location = String((r as any).LOCATION ?? '').trim();
-      const comments = String((r as any).COMMENTS ?? '').trim();
+      const location = String(r.LOCATION || '').trim();
+      const comments = String(r.COMMENTS || '').trim();
 
       const region = property?.region || activeJob?.region || '';
       const defaultKey = `${category}|${region}`;
@@ -188,7 +185,7 @@ export default function AppPage() {
         description,
         base_rate_pence: toPence(base),
         contract_rate_pence: toPence(check.fixedRate ?? contract),
-        unit,
+        unit: String(r.Unit || ''),
         qty,
         total_pence: toPence(check.fixedRate ? (check.fixedRate * qty) : total),
         location,
@@ -209,8 +206,9 @@ export default function AppPage() {
 
     // Map category/assignee names to IDs
     const catByName = new Map(categories.map((c: any) => [c.name, c.id]));
+    // Fetch contractors list
     const { data: contractors } = await supabase.from('contractors').select('*');
-    const contractorByName = new Map((contractors || []).map((c: any) => [c.company_name, c.id]));
+    const contractorByName = new Map((contractors||[]).map((c: any) => [c.company_name, c.id]));
 
     const dbRows = toInsert.map(x => ({
       job_id: jobId,
@@ -233,14 +231,12 @@ export default function AppPage() {
     const { error } = await supabase.from('line_items').insert(dbRows);
     if (error) return alert(error.message);
     alert('Upload complete');
-
     // reload
     const { data } = await supabase
       .from('line_items')
       .select('*, contractors:assignee_contractor_id(company_name), categories:category_id(name)')
       .eq('job_id', jobId)
       .order('row_index', { ascending: true });
-
     if (data) setItems(data.map((r: any) => ({
       id: r.id,
       code: r.code,
@@ -266,13 +262,14 @@ export default function AppPage() {
     const dbPatch: any = {};
     if (patch.status) dbPatch.status = patch.status;
     if (patch.category) {
+      // map category name to id
       const { data: cats } = await supabase.from('categories').select('*');
-      const cat = (cats || []).find(c => c.name === patch.category);
+      const cat = (cats||[]).find(c => c.name === patch.category);
       if (cat) dbPatch.category_id = cat.id;
     }
     if (patch.assignee_name !== undefined) {
       const { data: cons } = await supabase.from('contractors').select('*');
-      const c = (cons || []).find(x => x.company_name === patch.assignee_name);
+      const c = (cons||[]).find(x => x.company_name === patch.assignee_name);
       dbPatch.assignee_contractor_id = c?.id || null;
       if (patch.assignee_name && patch.status === 'Unassigned') dbPatch.status = 'Assigned';
     }
@@ -296,7 +293,6 @@ export default function AppPage() {
       CODE: r.code,
       DESCRIPTION: r.description,
       'BASE RATE': fromPence(r.base_rate_pence),
-      // keep our canonical header name on export
       'CONTRACT RATE UNIT': fromPence(r.contract_rate_pence),
       Unit: r.unit,
       QTY: r.qty,
@@ -311,9 +307,6 @@ export default function AppPage() {
     exportXlsx(rows, 'schedule_export.xlsx');
   }
 
-  const [route, setRoute] = useState<'wireflow'|'upload'|'jobs'|'items'>('items');
-  useEffect(() => { if (activeJobId && route === 'jobs') setRoute('items'); }, [activeJobId, route]);
-
   const [file, setFile] = useState<File | null>(null);
   const [property, setProperty] = useState<any>({ region: 'Gloucester' });
 
@@ -327,14 +320,27 @@ export default function AppPage() {
       <aside className="lg:sticky lg:top-4 h-fit">
         <Card>
           <nav className="flex flex-col gap-1">
+            {/* ---------- NEW: quick Home link ---------- */}
+            <a className="text-left rounded-xl px-3 py-2 text-sm font-medium hover:bg-gray-100" href="/app/home">
+              Home
+            </a>
+            {/* ----------------------------------------- */}
             {['jobs','upload','items'].map(k => (
-              <button key={k} onClick={() => setRoute(k as any)} className={`text-left rounded-xl px-3 py-2 text-sm font-medium ${route===k ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100 text-gray-800'}`}>{k[0].toUpperCase()+k.slice(1)}</button>
+              <button
+                key={k}
+                onClick={() => setRoute(k as any)}
+                className={`text-left rounded-xl px-3 py-2 text-sm font-medium ${route===k ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100 text-gray-800'}`}
+              >
+                {k[0].toUpperCase()+k.slice(1)}
+              </button>
             ))}
           </nav>
         </Card>
         <Card className="mt-4" title="Session" subtitle={mode === 'demo_pin' ? 'Demo (local)' : userEmail}>
           {mode !== 'demo_pin' && (
-            <Button variant="outline" onClick={async ()=>{ await supabase.auth.signOut(); window.location.href='/' }}>Sign out</Button>
+            <Button variant="outline" onClick={async ()=>{ await supabase.auth.signOut(); window.location.href='/' }}>
+              Sign out
+            </Button>
           )}
         </Card>
       </aside>
