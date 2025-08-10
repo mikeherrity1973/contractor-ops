@@ -9,7 +9,7 @@ import Logo from '@/components/Logo';
 export default function HomeHub() {
   return (
     <div className="min-h-screen">
-      {/* HERO: gradient only at the top */}
+      {/* HERO — gradient only at the top */}
       <div className="bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 text-white">
         <header className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -36,7 +36,8 @@ export default function HomeHub() {
             Welcome to <span className="text-white/90">Contractor AI</span>
           </h1>
           <p className="mt-2 text-white/80 max-w-2xl">
-            Your control centre for jobs, uploads, and progress — designed to work great on laptop, tablet, and phone.
+            Your control centre for jobs, uploads, and progress — designed to work great on laptop,
+            tablet, and phone.
           </p>
           <div className="h-6" />
         </div>
@@ -44,13 +45,14 @@ export default function HomeHub() {
 
       {/* BODY */}
       <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* The -mt-16 is what makes the cards overlap the gradient nicely */}
+        {/* Cards overlap the hero for that “cut” effect */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 -mt-16">
+          {/* 1) Create Projects */}
           <Card
             title="Create Projects"
             subtitle="Set up New Contracts"
             actions={
-              <LinkButton href="/app#upload">
+              <LinkButton href="/app/create">
                 <UploadCloud size={16} /> Create
               </LinkButton>
             }
@@ -60,11 +62,12 @@ export default function HomeHub() {
             </p>
           </Card>
 
+          {/* 2) Manage Projects */}
           <Card
             title="Manage Projects"
             subtitle="Manage all Properties"
             actions={
-              <LinkButton href="/app#jobs">
+              <LinkButton href="/app/projects">
                 <FolderOpen size={16} /> Open
               </LinkButton>
             }
@@ -72,11 +75,12 @@ export default function HomeHub() {
             <p className="text-sm text-gray-600">Assign Contractors and Schedule Work.</p>
           </Card>
 
+          {/* 3) Manage Finance */}
           <Card
             title="Manage Finance"
             subtitle="Manage Sub Contractor Payments"
             actions={
-              <LinkButton href="/app/dashboard">
+              <LinkButton href="/app/finance">
                 <PieChart size={16} /> View
               </LinkButton>
             }
@@ -85,7 +89,7 @@ export default function HomeHub() {
           </Card>
         </section>
 
-        {/* Secondary row restored */}
+        {/* Lower row */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card title="Quick tips">
             <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
@@ -102,21 +106,21 @@ export default function HomeHub() {
 
           <Card title="What happens next?">
             <p className="text-sm text-gray-700">
-              Dashboard shows total value and completion. Use Manage Projects to drill into a property and
-              manage line items.
+              Dashboard shows total value and completion. Use Manage Projects to drill into a
+              property and manage line items.
             </p>
           </Card>
 
           <Card title="Links">
             <div className="flex flex-col gap-2 text-sm">
-              <a className="underline text-brand-700" href="/app#jobs">
-                Open projects
-              </a>
-              <a className="underline text-brand-700" href="/app#upload">
+              <a className="underline text-brand-700" href="/app/create">
                 Create project
               </a>
+              <a className="underline text-brand-700" href="/app/projects">
+                Manage projects
+              </a>
               <a className="underline text-brand-700" href="/app">
-                Workspace
+                Workspace (original)
               </a>
             </div>
           </Card>
