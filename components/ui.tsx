@@ -1,78 +1,104 @@
 'use client';
+
 import React from 'react';
-import Link from 'next/link';
 import clsx from 'clsx';
+import Link from 'next/link';
 
-/** Button
- * - Supports href (renders <Link>) or onClick (renders <button>)
- * - If href contains a hash (#), use a plain <a> (best for in-page/hash links)
- * - Variants: primary (brand), outline, ghost, success, danger, warning
- * - Sizes: sm, md, lg
- */
-export const Button = ({
-  children,
-  href,
-  onClick,
-  variant = 'primary',
-  size = 'md',
-  className,
-  type = 'button',
-  disabled,
-}: React.PropsWithChildren<{
-  href?: string | { pathname: string; query?: Record<string, any> }; // simple, avoids typedRoutes generics
-  onClick?: () => void;
-  variant?: 'primary' | 'outline' | 'danger' | 'ghost' | 'success' | 'warning';
-  size?: 'sm' | 'md' | 'lg';
+/* ----------------------------- Button / Link ----------------------------- */
+
+type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonVariant = 'primary' | 'outline' | 'danger' | 'ghost' | 'success' | 'warning';
+
+type ButtonBaseProps = {
   className?: string;
-  type?: 'button' | 'submit';
+  size?: ButtonSize;
+  variant?: ButtonVariant;
   disabled?: boolean;
-}>) => {
-  const base =
-    'inline-flex items-center justify-center gap-2 rounded-2xl font-medium transition px-4 py-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
-  const sizes = {
-    sm: 'text-sm px-3 py-1.5',
-    md: 'text-sm px-4 py-2',
-    lg: 'text-base px-5 py-3',
-  };
-  const variants: Record<string, string> = {
-    primary: 'bg-brand-600 text-white hover:bg-brand-700',
-    outline: 'border border-gray-300 text-gray-800 bg-white hover:bg-gray-50',
-    ghost: 'text-gray-700 hover:bg-gray-100',
-    success: 'bg-emerald-600 text-white hover:bg-emerald-700',
-    danger: 'bg-rose-600 text-white hover:bg-rose-700',
-    warning: 'bg-amber-500 text-white hover:bg-amber-600',
-  };
-  const cls = clsx(base, sizes[size], variants[variant], className, {
-    'pointer-events-none opacity-50': disabled && !!href,
-  });
+  children: React.ReactNode;
+};
 
-  // Hash links: use plain <a>
-  if (typeof href === 'string' && href.includes('#')) {
-    return (
-      <a href={href} className={cls} aria-disabled={disabled}>
-        {children}
-      </a>
-    );
-  }
+type ButtonProps =
+  | (ButtonBaseProps & {
+      type?: 'button' | 'submit';
+      onClick?: () => void;
+      href?: undefined;
+    })
+  | (ButtonBaseProps & {
+      /** keep types loose to avoid Next typed-routes generics issues on Vercel */
+      href: any; // string | UrlObject but we don't import LinkProps to keep build simple
+      onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+      type?: undefined;
+    });
 
-  // Next Link for everything else
-  if (href) {
+const btnSizes: Record<ButtonSize, string> = {
+  sm: 'text-sm px-3 py-1.5',
+  md: 'text-sm px-4 py-2',
+  lg: 'text-base px-5 py-3',
+};
+
+const btnVariants: Record<ButtonVariant, string> = {
+  primary: 'bg-blue-600 text-white hover:bg-blue-700',
+  outline: 'border border-gray-300 text-gray-800 bg-white hover:bg-gray-50',
+  ghost: 'text-gray-700 hover:bg-gray-100',
+  success: 'bg-emerald-600 text-white hover:bg-emerald-700',
+  danger: 'bg-rose-600 text-white hover:bg-rose-700',
+  warning: 'bg-amber-500 text-white hover:bg-amber-600',
+};
+
+export function Button(props: ButtonProps) {
+  const {
+    size = 'md',
+    variant = 'primary',
+    className,
+    disabled,
+    children,
+  } = props;
+
+  const cls = clsx(
+    'inline-flex items-center justify-center rounded-2xl font-medium transition shadow-sm',
+    'disabled:opacity-50 disabled:cursor-not-allowed',
+    btnSizes[size],
+    btnVariants[variant],
+    className
+  );
+
+  if ('href' in props && props.href) {
+    // Link-style button
+    const { href, onClick } = props;
     return (
-      <Link href={href as any} className={cls} aria-disabled={disabled}>
+      <Link href={href as any} onClick={onClick} className={cls} aria-disabled={disabled}>
         {children}
       </Link>
     );
   }
 
-  // Plain button
+  // Regular button
+  const { type = 'button', onClick } = props as Exclude<ButtonProps, { href: any }>;
   return (
-    <button type={type} disabled={disabled} onClick={onClick} className={cls}>
+    <button type={type} onClick={onClick} className={cls} disabled={disabled}>
       {children}
     </button>
   );
+}
+
+/** Convenience wrapper to mirror your imports in page.tsx */
+export const LinkButton = ({
+  href,
+  children,
+  ...rest
+}: Omit<Extract<ButtonProps, { href: any }>, 'variant' | 'size'> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+}) => {
+  return (
+    <Button href={href} {...rest}>
+      {children}
+    </Button>
+  );
 };
 
-/** Card */
+/* ---------------------------------- Card --------------------------------- */
+
 export const Card = ({
   title,
   subtitle,
@@ -90,16 +116,17 @@ export const Card = ({
       <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-4">
         <div>
           {title && <h3 className="text-base font-semibold text-gray-900">{title}</h3>}
-          {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-2">{actions}</div>
+        <div className="text-sm text-gray-500 mt-0.5">{subtitle}</div>
+        {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
       </div>
     )}
     <div className="p-4">{children}</div>
   </div>
 );
 
-/** Input */
+/* --------------------------------- Input --------------------------------- */
+
 export const Input = ({
   value,
   onChange,
@@ -119,13 +146,14 @@ export const Input = ({
     type={type}
     placeholder={placeholder}
     className={clsx(
-      'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200',
+      'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200',
       className
     )}
   />
 );
 
-/** Select */
+/* --------------------------------- Select -------------------------------- */
+
 export const Select = ({
   value,
   onChange,
@@ -140,7 +168,7 @@ export const Select = ({
     value={value}
     onChange={(e) => onChange(e.target.value)}
     className={clsx(
-      'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200',
+      'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200',
       className
     )}
   >
@@ -148,17 +176,15 @@ export const Select = ({
   </select>
 );
 
-/** Badge */
+/* --------------------------------- Badge --------------------------------- */
+
 export const Badge = ({
   children,
   tone = 'gray',
-}: React.PropsWithChildren<{
-  tone?: 'gray' | 'brand' | 'blue' | 'green' | 'amber' | 'red' | 'violet';
-}>) => {
+}: React.PropsWithChildren<{ tone?: 'gray' | 'blue' | 'green' | 'amber' | 'red' | 'violet' }>) => {
   const tones: Record<string, string> = {
     gray: 'bg-gray-100 text-gray-700',
-    brand: 'bg-brand-100 text-brand-700',
-    blue: 'bg-brand-100 text-brand-700', // alias for old code
+    blue: 'bg-blue-100 text-blue-700',
     green: 'bg-emerald-100 text-emerald-700',
     amber: 'bg-amber-100 text-amber-800',
     red: 'bg-rose-100 text-rose-700',
